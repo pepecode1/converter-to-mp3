@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Descargar YouTube y SoundCloud a MP3</title>
+    <title>Convertir de YouTube y SoundCloud a MP3</title>
     <style>
       body {
         font-family: Arial, sans-serif;
@@ -36,34 +36,151 @@
         border-radius: 5px;
         cursor: pointer;
       }
-      button:hover {
+      button:hover:not(:disabled) {
         background-color: #0056b3;
+      }
+      button:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
       }
       .note {
         font-size: 0.9em;
         color: #555;
         margin-top: 10px;
       }
+      #progress-container {
+        margin-top: 20px;
+        display: none;
+      }
+      progress {
+        width: 100%;
+        height: 20px;
+      }
+      #status {
+        margin-top: 10px;
+        font-size: 1em;
+        color: #333;
+      }
+      #error {
+        color: red;
+        margin-top: 10px;
+        display: none;
+      }
     </style>
   </head>
   <body>
     <div class="container">
-      <h1>Descargar YouTube o SoundCloud a MP3</h1>
-      <form action="/download" method="POST">
+      <h1>Convertir YouTube o SoundCloud a MP3</h1>
+      <form id="download-form">
         <input
           type="text"
           name="url"
+          id="url"
           placeholder="Pega el enlace de YouTube o SoundCloud aquí"
           required
         />
         <br />
-        <button type="submit">Descargar MP3</button>
+        <button type="submit" id="download-btn">Continuar</button>
       </form>
+      <div id="progress-container">
+        <progress id="progress-bar" value="0" max="100"></progress>
+        <div id="status">Iniciando...</div>
+      </div>
+      <div id="error"></div>
       <p class="note">
         Nota: Solo se pueden descargar pistas de SoundCloud habilitadas para
         descarga por el artista. Para YouTube, verifica que el enlace sea
         válido.
       </p>
     </div>
+
+    <script>
+      const form = document.getElementById("download-form");
+      const downloadBtn = document.getElementById("download-btn");
+      const progressContainer = document.getElementById("progress-container");
+      const progressBar = document.getElementById("progress-bar");
+      const status = document.getElementById("status");
+      const errorDiv = document.getElementById("error");
+      let progressInterval = null;
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        downloadBtn.disabled = true;
+        progressContainer.style.display = "block";
+        errorDiv.style.display = "none";
+        status.textContent = "Iniciando descarga...";
+        progressBar.value = 0;
+
+        const url = document.getElementById("url").value;
+        try {
+          const response = await fetch("/download", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: `url=${encodeURIComponent(url)}`,
+          });
+          const result = await response.json();
+
+          if (result.status === "started") {
+            checkProgress();
+          } else {
+            showError("Error al iniciar la descarga.");
+            resetForm();
+          }
+        } catch (err) {
+          showError("Error de conexión con el servidor.");
+          resetForm();
+        }
+      });
+
+      function checkProgress() {
+        fetch("/progress")
+          .then((response) => response.json())
+          .then((data) => {
+            console.log("Progreso:", data); // Para depuración
+            progressBar.value = data.progress || 0;
+            status.textContent = `Progreso: ${Math.round(data.progress || 0)}%`;
+
+            if (data.status === "finished" && data.filename) {
+              status.textContent =
+                "Descarga completa. Iniciando descarga del archivo...";
+              clearInterval(progressInterval);
+              window.location.href = `/get_file/${encodeURIComponent(
+                data.filename
+              )}`;
+              resetForm();
+            } else if (data.status.startsWith("error")) {
+              showError(data.status);
+              clearInterval(progressInterval);
+              resetForm();
+            } else {
+              // Continuar verificando
+              if (!progressInterval) {
+                progressInterval = setInterval(checkProgress, 1000);
+              }
+            }
+          })
+          .catch((err) => {
+            showError("Error al obtener el progreso: " + err.message);
+            clearInterval(progressInterval);
+            resetForm();
+          });
+      }
+
+      function showError(message) {
+        errorDiv.textContent = message;
+        errorDiv.style.display = "block";
+        progressContainer.style.display = "none";
+      }
+
+      function resetForm() {
+        downloadBtn.disabled = false;
+        progressContainer.style.display = "none";
+        progressBar.value = 0;
+        status.textContent = "";
+        document.getElementById("url").value = "";
+        clearInterval(progressInterval);
+        progressInterval = null;
+      }
+    </script>
   </body>
 </html>
