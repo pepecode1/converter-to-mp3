@@ -23,3 +23,7 @@
 ## Contribuciones
 - ¡Las contribuciones son bienvenidas! Por favor, abre un issue o un pull request en el repositorio para sugerencias o mejoras.
 
+## Screenshoots
+<img width="1432" height="427" alt="Captura de pantalla 2025-08-27 a la(s) 1 06 00 p m" src="https://github.com/user-attachments/assets/6d718034-b226-485e-8855-552a48b77412" />
+<img width="1440" height="474" alt="Captura de pantalla 2025-08-27 a la(s) 1 01 36 p m" src="https://github.com/user-attachments/assets/6060134c-692c-41b1-9188-9515738a83d8" />
+
